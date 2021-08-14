@@ -2,8 +2,14 @@ import Vue from 'vue'
 import App from './App.vue'
 import router from './router'
 import store from './store'
+import animate from 'animate.css'
+
+Vue.use(animate)
 
 Vue.config.productionTip = false
+
+// 添加事件总线 用于监听Goodsitem图片加载完成
+Vue.prototype.$bus = new Vue()
 
 new Vue({
   router,
