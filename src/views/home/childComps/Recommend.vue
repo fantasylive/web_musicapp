@@ -8,8 +8,9 @@
       </swiper-item>
     </swiper>
     <h2>推荐歌单</h2>
+    <scroll class="scroll-content" ref="scroll">
     <div class="recommend-list">
-      <router-link :to="{path:'/songList' , query: {id:item.id ,type: 0}}" v-for="(item,index) in RecommendSongList" :key="index" class="list-item">
+      <router-link :to="{path:'/songList' , query: {id:item.id}}" v-for="(item,index) in RecommendSongList" :key="index" class="list-item">
         <div class="item-img">
           <span><i class="fa fa-headphones" aria-hidden="true"></i> {{item.playCount | playCountFilter}}</span>
           <img :src="item.picUrl" alt=""  @load="elementLoaded">
@@ -17,18 +18,23 @@
         <p>{{item.name}}</p>
       </router-link>
     </div>
+    </scroll>
   </div>
 </template>
 
 <script>
 import { Swiper, SwiperItem } from 'components/common/swiper'
 import {getBanner,getRecommendSongList} from 'network/getDatas'
+import Scroll from 'components/common/scroll/Scroll'
+import { scrollRefreshMixin } from 'common/mixin'
 export default {
   name: 'Recommend',
   components: {
     Swiper,
-    SwiperItem
+    SwiperItem,
+    Scroll
   },
+  mixins:[scrollRefreshMixin],
   data() {
     return{
       banners:[],
@@ -44,11 +50,10 @@ export default {
     this.getBanner()
     this.getRecommendSongList()
   },
+  activated() {
+    this.elementLoaded()
+  },
   methods: {
-    // 推荐歌单图片加载完成发送事件
-    elementLoaded() {
-      this.$bus.$emit('elementLoaded')
-    },
     getBanner() {
       getBanner().then((res) => {
         this.banners = res.banners
@@ -71,6 +76,11 @@ export default {
 h2 {
   margin: 15px 0 10px 5px;
   font-weight: bold;
+}
+.scroll-content {
+  // 1vh等于当前视窗的1%
+  height: calc(100vh - 270px);
+  overflow: hidden;
 }
 .recommend-list {
   display: flex;

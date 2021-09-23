@@ -1,5 +1,17 @@
 import { request } from "./request"
-export {getBanner,getRecommendSongList,getSongListDetail,getSongUrl,getSongDetail,getSongLyric}
+export {
+  getBanner,
+  getRecommendSongList,
+  getSongListDetail,
+  getSongUrl,
+  getSongDetail,
+  getSongLyric,
+  getToplist,
+  getTopArtists,
+  getArtistSingles,
+  getHotSearch,
+  getSearchResult
+}
 
 function getBanner(){
   return request({
@@ -51,6 +63,47 @@ function getSongLyric(id) {
     method:'get',
     params: {
       id
+    }
+  })
+}
+
+function getToplist() {
+  return request({
+    url:'/toplist/detail',
+    method:'get'
+  })
+}
+
+function getTopArtists() {
+  return request({
+    url: '/top/artists',
+    method:'get'
+  })
+}
+
+function getArtistSingles(id) {
+  return request({
+    url: '/artists',
+    method: 'get',
+    params: {
+      id
+    }
+  })
+}
+
+function getHotSearch() {
+  return request({
+    url: '/search/hot',
+    method: 'get'
+  })
+}
+
+function getSearchResult(keywords) {
+  return request({
+    url: '/search',
+    method: 'get',
+    params: {
+      keywords
     }
   })
 }

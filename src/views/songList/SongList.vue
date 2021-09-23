@@ -4,7 +4,7 @@
       <nav-bar class="navbar">
         <div slot="left">
           <i class="fa fa-chevron-left" aria-hidden="true" @click="backUp"></i>
-          {{ listType }}
+          歌单
         </div>
       </nav-bar>
       <div class="describe">
@@ -39,7 +39,6 @@ export default {
   mixins:[scrollRefreshMixin],
   data() {
     return {
-      listType: '歌单',
       listId: '',
       listDetail: {},
     }
@@ -56,14 +55,13 @@ export default {
   },
   // 更新data数据，dom加载完成发布事件
   created() {
-    let type = this.$route.query.type
-    if(type != 0) {
-      this.listType = '歌手'
-    }
     this.listId = this.$route.query.id
     this.getSongListDetail(this.listId)
+  },
+  // 页面渲染完成时刷新scroll
+  mounted() {
     this.$nextTick(function(){
-      this.$bus.$emit('elementLoaded')
+      this.elementLoaded()
     })
   },
   methods: {

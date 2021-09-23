@@ -7,32 +7,35 @@
             <i class="fa fa-chevron-down" aria-hidden="true"></i>
           </div>
           <div slot="center" class="center">
-            <h2>{{ songDetail.name }}</h2>
-            <p>{{ songDetail.artist }}</p>
+            <h2>{{ playingSong.name }}</h2>
+            <p>{{ playingSong.artist }}</p>
           </div>
         </nav-bar>
-        <div class="centerSection" @click="changeShowLyric">
+        <div
+          v-if="playingSong.lyric"
+          class="centerSection"
+          @click="changeShowLyric"
+        >
           <scroll v-show="showLyric" class="scroll-content" ref="scroll">
-            <p v-for="(line, index) in songDetail.lyric.lines" :key="index">
+            <p v-for="(line, index) in playingSong.lyric.lines" :key="index">
               {{ line.txt }}
             </p>
           </scroll>
           <div v-show="!showLyric" class="disc">
-            <img :src="songDetail.coverPic" alt="" :style="discStyle"/>
+            <img :src="playingSong.coverPic" alt="" :style="discStyle" />
           </div>
         </div>
         <div>
           <audio-controller
             :duration="duration"
             :currentTime="currentTime"
-            @changePlayStatus="changePlayStatus"
+            :paused="playStatus"
+            :liked="isFavorite"
+            @AudioController_changePlayStatus="changePlayStatus"
+            @AudioController_playPreviousSong="playPreviousSong"
+            @AudioController_playNextSong="playNextSong"
+            @AudioController_addFavorite="addFavorite"
           ></audio-controller>
-          <audio
-            :src="songDetail.songUrl"
-            ref="audio"
-            @canplay="ready"
-            @timeupdate="throttleUpdateTime"
-          ></audio>
         </div>
       </div>
     </div>
@@ -58,9 +61,6 @@ export default {
   mixins: [scrollRefreshMixin],
   data() {
     return {
-      paused: true,
-      duration: 0,
-      currentTime: 0,
       throttleUpdateTime: throttle.call(this, this.updateTime, 1000),
       showLyric: true,
       songDetail: {
@@ -69,29 +69,117 @@ export default {
         name: '',
         artist: '',
         coverPic: '',
-        lyric: {}
+        lyric: {},
+        duration: 0,
+        currentTime: 0,
+        paused: false
       }
     }
   },
   computed: {
     background() {
-      return `background-image:url(${this.songDetail.coverPic}); background-repeat:no-repeat; background-size:100% 100%;`
+      return `background-image:url(${this.playingSong.coverPic}); background-repeat:no-repeat; background-size:100% 100%;`
     },
     // 唱片在播放时才开始动画效果
     discStyle() {
-      return this.paused ? `animation-play-state: paused;` : ''
+      return this.playStatus ? `animation-play-state: paused;` : ''
+    },
+    duration() {
+      return this.$store.getters.getDuration
+    },
+    currentTime() {
+      return this.$store.getters.getCurrentTime
+    },
+    playStatus() {
+      return this.$store.getters.getPlayStatus
+    },
+    playingSong() {
+      return this.$store.getters.getNowPlaying
+    },
+    // 判断当前音乐是否在favorite列表中
+    isFavorite() {
+      return this.$store.getters.getFavoriteList.findIndex(song => song.songId === this.playingSong.songId) !== -1
+    }
+  },
+  watch: {
+    // 监听路径变化重新加载组件，判断当前路径是否在player下防止重复调用
+    $route(to, from) {
+      if (this.$route.query.id && this.$route.path == '/player') {
+        // 如果显示playerBar就将它隐藏
+        if (this.$store.getters.getShowBar) {
+          this.$store.commit('CHANGE_SHOWBAR')
+        }
+        // 隐藏playlist
+        if (this.$store.getters.getShowPlayList) {
+          this.$store.commit('CHANGE_SHOWPLAYLIST')
+        }
+        // 同一首音乐不刷新
+        if (this.$route.query.id !== this.playingSong.songId) {
+          this.songDetail.songId = this.$route.query.id
+          this.getSongDetail(this.songDetail.songId).then(() => {
+            // 将当前歌曲添加到列表中
+            // JSON.parse(JSON.stringify(this.songDetail))使用浅拷贝每次提交时都是一个不同的对象
+            this.$store.commit('ADD_SONG', {
+              song: JSON.parse(JSON.stringify(this.songDetail))
+            })
+            // 通知播放器已添加完歌曲
+            this.$bus.$emit('Player_songAdd')
+          })
+        }
+      }
     }
   },
   created() {
+    // 如果显示playerBar就将它隐藏
+    if (this.$store.getters.getShowBar) {
+      this.$store.commit('CHANGE_SHOWBAR')
+    }
+    // 隐藏playlist
+    if (this.$store.getters.getShowPlayList) {
+      this.$store.commit('CHANGE_SHOWPLAYLIST')
+    }
     this.songDetail.songId = this.$route.query.id
-    this.getSongUrl(this.songDetail.songId)
-    this.getSongDetail(this.songDetail.songId)
-    this.getSongLyric(this.songDetail.songId)
+    this.getSongDetail(this.songDetail.songId).then(() => {
+      // 将当前歌曲添加到列表中
+      // JSON.parse(JSON.stringify(this.songDetail))使用浅拷贝每次提交时都是一个不同的对象
+      this.$store.commit('ADD_SONG', {
+        song: JSON.parse(JSON.stringify(this.songDetail))
+      })
+      // 通知播放器已添加完歌曲
+      this.$bus.$emit('Player_songAdd')
+    })
+
+    /**
+     *  问题出在这，数据还没写入对象中就提交commit了，所以路径什么的都没有值，要使用promise
+     *  对象覆盖问题，是因为每次都是修改同一个对象并提交，他们的地址值是相同的，也就是说vuex中存了一个对象存了好几次，一个对象修改，那当然所有的都就修改了
+     *  JSON.parse(JSON.stringify(this.songDetail))使用浅拷贝每次提交时都是一个不同的对象，即可解决
+     *
+     */
+  },
+  // 页面渲染完成时刷新歌词的scroll
+  mounted() {
     this.$nextTick(function () {
-      this.$bus.$emit('elementLoaded')
+      if(this.$refs.scroll) {
+        this.elementLoaded()
+      }
     })
   },
+  deactivated() {
+    // 离开组件时显示playerbar
+    if (!this.$store.getters.getShowBar) {
+      this.$store.commit('CHANGE_SHOWBAR')
+    }
+  },
   methods: {
+    addFavorite() {
+      this.$store.commit('ADD_FAVORITE', {song: this.playingSong})
+    },
+    playPreviousSong() {
+      this.$bus.$emit('Player_playPreviousSong')
+    },
+    playNextSong() {
+      this.$bus.$emit('Player_playNextSong')
+    },
     changeShowLyric() {
       this.showLyric = !this.showLyric
     },
@@ -100,36 +188,24 @@ export default {
     },
     // 监听事件改变播放状态
     changePlayStatus() {
-      if (this.$refs.audio.paused) {
-        this.$refs.audio.play()
-        this.paused = false
-      } else {
-        this.$refs.audio.pause()
-        this.paused = true
-      }
+      // 发出更改播放状态事件，playerBar组件监听到事件后更改播放状态并更新至Vuex
+      this.$bus.$emit('Player_changePlayStatus')
     },
-    ready() {
-      this.duration = this.$refs.audio.duration
-    },
-    updateTime() {
-      this.currentTime = this.$refs.audio.currentTime
-    },
-    getSongUrl(id) {
-      getSongUrl(id).then((res) => {
-        this.songDetail.songUrl = res.data[0].url
-      })
-    },
+    // 获取音乐数据
     getSongDetail(id) {
-      getSongDetail(id).then((res) => {
-        this.songDetail.name = res.songs[0].al.name
-        this.songDetail.coverPic = res.songs[0].al.picUrl
-        this.songDetail.artist = res.songs[0].ar[0].name
-      })
-    },
-    getSongLyric(id) {
-      getSongLyric(id).then((res) => {
-        this.songDetail.lyric = new Lyric(res.lrc.lyric)
-      })
+      return Promise.all([
+        getSongUrl(id).then((res) => {
+          this.songDetail.songUrl = res.data[0].url
+        }),
+        getSongDetail(id).then((res) => {
+          this.songDetail.name = res.songs[0].name
+          this.songDetail.coverPic = res.songs[0].al.picUrl
+          this.songDetail.artist = res.songs[0].ar[0].name
+        }),
+        getSongLyric(id).then((res) => {
+          this.songDetail.lyric = new Lyric(res.lrc.lyric)
+        })
+      ])
     }
   }
 }
@@ -156,6 +232,7 @@ export default {
 .player {
   height: 100vh;
   position: relative;
+  overflow: hidden;
   // 实现背景模糊
   &::after {
     content: '';
@@ -208,7 +285,7 @@ export default {
           height: 250px;
           width: 250px;
           border-radius: 145px;
-          animation: rotation 20s linear infinite;
+          animation: rotation 40s linear infinite;
         }
       }
     }

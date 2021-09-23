@@ -14,25 +14,21 @@
       <router-link to="/rank">排行</router-link>
       <router-link to="/singer">歌手</router-link>
     </div>
-    <scroll class="scroll-content" ref="scroll">
+    <div class="content">
       <keep-alive>
         <router-view />
       </keep-alive>
-    </scroll>
+    </div>
   </div>
 </template>
 
 <script>
-import NavBar from 'components/common/navbar/NavBar.vue'
-import Scroll from 'components/common/scroll/Scroll.vue'
-import {scrollRefreshMixin} from 'common/mixin'
+import NavBar from 'components/common/navbar/NavBar'
 export default {
   name: 'Home',
   components: {
-    NavBar,
-    Scroll
-  },
-  mixins: [scrollRefreshMixin]
+    NavBar
+  }
 }
 </script>
 
@@ -43,7 +39,7 @@ export default {
   justify-content: space-around;
   align-items: center;
 }
-.scroll-content {
+.content {
   // 1vh等于当前视窗的1%
   height: calc(100vh - 94px);
   overflow: hidden;

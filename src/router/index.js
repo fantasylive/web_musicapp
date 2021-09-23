@@ -9,6 +9,7 @@ const User = () => import('views/user/User')
 const Search = () => import('views/search/Search')
 const SongList = () => import('views/songList/SongList')
 const Player = () => import('views/player/Player')
+const Artist = () => import('views/artist/Artist')
 
 Vue.use(VueRouter)
 
@@ -50,6 +51,10 @@ const routes = [
   {
     path: '/player',
     component: Player
+  },
+  {
+    path: '/artist',
+    component: Artist
   }
 ]
 
