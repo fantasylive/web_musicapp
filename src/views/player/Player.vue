@@ -1,6 +1,6 @@
 <template>
   <transition name="player">
-    <div class="player" :style="background">
+    <div class="player">
       <div class="content">
         <nav-bar class="navbar">
           <div slot="left" @click="backUp">
@@ -61,8 +61,9 @@ export default {
   mixins: [scrollRefreshMixin],
   data() {
     return {
+      loaded: false,
       throttleUpdateTime: throttle.call(this, this.updateTime, 1000),
-      showLyric: true,
+      showLyric: false,
       songDetail: {
         songId: 0,
         songUrl: '',
@@ -77,9 +78,6 @@ export default {
     }
   },
   computed: {
-    background() {
-      return `background-image:url(${this.playingSong.coverPic}); background-repeat:no-repeat; background-size:100% 100%;`
-    },
     // 唱片在播放时才开始动画效果
     discStyle() {
       return this.playStatus ? `animation-play-state: paused;` : ''
@@ -115,6 +113,9 @@ export default {
         }
         // 同一首音乐不刷新
         if (this.$route.query.id !== this.playingSong.songId) {
+          // 切换歌曲将loaded设置为false
+          this.loaded = false
+          this.showLyric = false
           this.songDetail.songId = this.$route.query.id
           this.getSongDetail(this.songDetail.songId).then(() => {
             // 将当前歌曲添加到列表中
@@ -130,6 +131,8 @@ export default {
     }
   },
   created() {
+    // 监听playerbar添加完nowPlaying
+    this.$bus.$on('PlayerBar_ADD_NOWPLAYING', this.addBackgroundImg)
     // 如果显示playerBar就将它隐藏
     if (this.$store.getters.getShowBar) {
       this.$store.commit('CHANGE_SHOWBAR')
@@ -156,13 +159,11 @@ export default {
      *
      */
   },
-  // 页面渲染完成时刷新歌词的scroll
-  mounted() {
-    this.$nextTick(function () {
-      if(this.$refs.scroll) {
-        this.elementLoaded()
-      }
-    })
+  // 组件激活时判断是否已加载，如果已加载就清除loading
+  activated() {
+    if(this.loaded && this.$store.state.loadingInstance) {
+      this.$store.state.loadingInstance.close()
+    }
   },
   deactivated() {
     // 离开组件时显示playerbar
@@ -171,6 +172,21 @@ export default {
     }
   },
   methods: {
+    // 添加背景图片，在图片加载完成后关闭loading
+    addBackgroundImg() {
+      let player =  document.querySelector(".player")
+      let backgroundImg = new Image() 
+      backgroundImg.src = this.playingSong.coverPic
+      backgroundImg.onload = () => {
+        player.style.backgroundImage = `url(${this.playingSong.coverPic})`
+        player.style.backgroundSize = "100% 100%"
+        player.style.backgroundRepeat = "no-repeat"
+        this.loaded = true
+        if(this.$store.state.loadingInstance) {
+          this.$store.state.loadingInstance.close()
+        }
+      }
+    },
     addFavorite() {
       this.$store.commit('ADD_FAVORITE', {song: this.playingSong})
     },
@@ -182,6 +198,12 @@ export default {
     },
     changeShowLyric() {
       this.showLyric = !this.showLyric
+      // 点击显示歌词时刷新歌词的scroll
+      this.$nextTick(function () {
+      if(this.$refs.scroll) {
+        this.elementLoaded()
+      }
+    })
     },
     backUp() {
       this.$router.go(-1)
@@ -203,7 +225,10 @@ export default {
           this.songDetail.artist = res.songs[0].ar[0].name
         }),
         getSongLyric(id).then((res) => {
-          this.songDetail.lyric = new Lyric(res.lrc.lyric)
+          // 因为有的音乐没有歌词，且有些歌对没有歌词返回的json不相同，所以在此做判断
+          if (!res.nolyric && res.lrc && res.lrc.lyric !== null) {
+            this.songDetail.lyric = new Lyric(res.lrc.lyric)
+          }
         })
       ])
     }
@@ -285,7 +310,7 @@ export default {
           height: 250px;
           width: 250px;
           border-radius: 145px;
-          animation: rotation 40s linear infinite;
+          animation: rotation 65s linear infinite;
         }
       }
     }

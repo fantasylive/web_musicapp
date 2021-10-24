@@ -81,6 +81,8 @@ export default {
     ready() {
       this.$store.commit('ADD_DURATION', {duration: this.$refs.audio.duration})
       this.$store.commit('ADD_NOWPLAYING', {song: this.song})
+      // 通知Player组件NOWPLAYING已添加，可以读取背景图片路径
+      this.$bus.$emit('PlayerBar_ADD_NOWPLAYING')
     },
     // 更新音乐当前播放时间
     updateTime() {
@@ -94,6 +96,8 @@ export default {
         this.$refs.audio.pause()
         this.song = {}
         this.$store.commit('ADD_NOWPLAYING', {song:{}})
+        // 通知Player组件NOWPLAYING已添加，可以读取背景图片路径
+        this.$bus.$emit('PlayerBar_ADD_NOWPLAYING')
         this.$store.commit('CHANGE_SHOWBAR')
       }
       

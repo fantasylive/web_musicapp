@@ -50,6 +50,7 @@ const routes = [
   },
   {
     path: '/player',
+    name: 'Player',
     component: Player
   },
   {

@@ -4,12 +4,13 @@
       <router-view />
     </keep-alive>
     <player-bar v-show="isShowBar" />
-    <div class="shade_box" v-show="isShowPlayList"/>
+    <div class="shade_box" v-show="isShowPlayList" />
     <play-list v-show="isShowPlayList" />
   </div>
 </template>
 
 <script>
+import { Loading } from 'element-ui'
 import PlayerBar from 'components/content/playerbar/PlayerBar.vue'
 import PlayList from 'components/content/playlist/PlayList.vue'
 export default {
@@ -25,6 +26,22 @@ export default {
     isShowPlayList() {
       return this.$store.getters.getShowPlayList
     }
+  },
+  created() {
+    // 添加路由前置守卫，进入player组件时显示loading
+    this.$router.beforeEach((to, from, next) => {
+      if(from.name === "Player") {
+        if(this.$store.state.loadingInstance) {
+          this.$store.state.loadingInstance.close()
+        }
+      }
+      if(to.name === "Player") {
+        let loadingInstance = Loading.service({ fullscreen: true, background:'#ffffff' })
+        this.$store.commit('ADD_LOADINGINSTANCE', {loadingInstance})
+        next()
+      }
+      next()
+    })
   }
 }
 </script>
